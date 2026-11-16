@@ -9,6 +9,7 @@ package beacon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"time"
@@ -125,7 +126,10 @@ func writeBroadcasts(ctx context.Context, inbox <-chan []byte, port int) error {
 }
 
 func readBroadcasts(ctx context.Context, outbox chan<- recv, port int) error {
-	conn, err := net.ListenUDP("udp4", &net.UDPAddr{Port: port})
+	// Several Syncthing instances on one host (one per user, say) all need to
+	// receive the broadcasts on this port, see reuse_*.go
+	lc := net.ListenConfig{Control: reuseControl}
+	conn, err := lc.ListenPacket(ctx, "udp4", fmt.Sprintf(":%d", port))
 	if err != nil {
 		l.Debugln(err)
 		return err
